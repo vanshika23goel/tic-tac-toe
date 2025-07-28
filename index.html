@@ -6,82 +6,165 @@
   <title>Tic-Tac-Toe</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Arial', sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
       margin: 0;
-      background-color: #f0f0f0;
+      background-color: #1a1a2e;
+      overflow: hidden;
+      position: relative;
     }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
     h1 {
-      color: #333;
+      color: #ffffff;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
       margin-bottom: 20px;
+      font-size: 2.5em;
+      animation: fadeIn 1s ease-in;
     }
+
     #status {
       font-size: 1.5em;
       margin-bottom: 20px;
-      color: #333;
+      color: #ffffff;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px 20px;
+      border-radius: 5px;
+      animation: fadeIn 1s ease-in;
     }
+
     #board {
       display: grid;
       grid-template-columns: repeat(3, 100px);
       grid-gap: 5px;
-      background-color: #333;
+      background-color: rgba(255, 255, 255, 0.2);
       padding: 5px;
       border-radius: 10px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+      animation: fadeInBoard 1s ease-in;
     }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInBoard {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
     .cell {
       width: 100px;
       height: 100px;
-      background-color: #fff;
+      background-color: rgba(255, 255, 255, 0.9);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 2em;
+      font-size: 2.5em;
+      font-weight: bold;
       cursor: pointer;
       border-radius: 5px;
-      transition: background-color 0.3s;
+      transition: background-color 0.3s, transform 0.2s;
     }
+
     .cell:hover {
-      background-color: #e0e0e0;
+      background-color: rgba(255, 255, 255, 1);
+      transform: scale(1.05);
     }
+
     .cell.x::before {
       content: 'X';
-      color: #e74c3c;
+      color: #ff2e63;
+      animation: markAppear 0.3s ease;
     }
+
     .cell.o::before {
       content: 'O';
-      color: #3498db;
+      color: #08d9d6;
+      animation: markAppear 0.3s ease;
     }
-    #reset {
+
+    @keyframes markAppear {
+      from { opacity: 0; transform: scale(0) rotate(45deg); }
+      to { opacity: 1; transform: scale(1) rotate(0); }
+    }
+
+    #scores {
       margin-top: 20px;
+      display: flex;
+      gap: 20px;
+      color: #ffffff;
+      background: rgba(0, 0, 0, 0.6);
       padding: 10px 20px;
-      font-size: 1em;
-      background-color: #2ecc71;
-      color: white;
-      border: none;
       border-radius: 5px;
+      animation: fadeIn 1s ease-in;
+    }
+
+    #scores span {
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+
+    .button-container {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    #reset, #toggle-mode {
+      padding: 12px 24px;
+      font-size: 1.1em;
+      font-weight: bold;
+      background-color: #00ff7f;
+      color: #ffffff;
+      border: none;
+      border-radius: 25px;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
-    #reset:hover {
-      background-color: #27ae60;
+
+    #reset:hover, #toggle-mode:hover {
+      transform: scale(1.1) translateY(-3px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+      animation: bounce 0.3s ease;
     }
+
+    @keyframes bounce {
+      0%, 100% { transform: scale(1.1) translateY(-3px); }
+      50% { transform: scale(1.15) translateY(-5px); }
+    }
+
     @media (max-width: 400px) {
+      h1 { font-size: 2em; }
+      #status { font-size: 1.2em; }
       #board {
         grid-template-columns: repeat(3, 80px);
       }
       .cell {
         width: 80px;
         height: 80px;
-        font-size: 1.5em;
+        font-size: 2em;
       }
+      #scores { font-size: 1em; }
+      #reset, #toggle-mode { padding: 10px 20px; font-size: 1em; }
     }
   </style>
 </head>
 <body>
+  <canvas id="background"></canvas>
   <h1>Tic-Tac-Toe</h1>
   <div id="status">Player X's Turn</div>
   <div id="board">
@@ -95,15 +178,98 @@
     <div class="cell" data-index="7"></div>
     <div class="cell" data-index="8"></div>
   </div>
-  <button id="reset">Reset Game</button>
+  <div id="scores">
+    <span>Player X: <span id="x-score">0</span></span>
+    <span>Player O: <span id="o-score">0</span></span>
+  </div>
+  <div class="button-container">
+    <button id="reset">Reset Game</button>
+    <button id="toggle-mode">Mode: Two-Player</button>
+  </div>
   <script>
+    // Canvas background animation
+    const canvas = document.getElementById('background');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const symbols = [];
+    const maxSymbols = 50;
+
+    class Symbol {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.text = Math.random() > 0.5 ? 'X' : 'O';
+        this.color = this.text === 'X' ? '#ff2e63' : '#08d9d6';
+        this.opacity = Math.random() * 0.5 + 0.2;
+        this.speedX = (Math.random() - 0.5) * 4;
+        this.speedY = (Math.random() - 0.5) * 4;
+        this.size = Math.random() * 20 + 20;
+      }
+
+      draw() {
+        ctx.font = `${this.size}px Arial`;
+        ctx.fillStyle = `rgba(${parseInt(this.color.slice(1, 3), 16)}, ${parseInt(this.color.slice(3, 5), 16)}, ${parseInt(this.color.slice(5, 7), 16)}, ${this.opacity})`;
+        ctx.fillText(this.text, this.x, this.y);
+      }
+
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.opacity -= 0.002;
+        if (this.opacity <= 0) {
+          this.x = Math.random() * canvas.width;
+          this.y = Math.random() * canvas.height;
+          this.opacity = Math.random() * 0.5 + 0.2;
+          this.speedX = (Math.random() - 0.5) * 4;
+          this.speedY = (Math.random() - 0.5) * 4;
+        }
+        if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+      }
+    }
+
+    function init() {
+      for (let i = 0; i < maxSymbols; i++) {
+        symbols.push(new Symbol());
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      symbols.forEach(symbol => {
+        symbol.update();
+        symbol.draw();
+      });
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+
+    init();
+    animate();
+
+    // Game logic
     const board = document.getElementById('board');
     const cells = document.querySelectorAll('.cell');
     const status = document.getElementById('status');
     const resetButton = document.getElementById('reset');
+    const toggleModeButton = document.getElementById('toggle-mode');
+    const xScoreDisplay = document.getElementById('x-score');
+    const oScoreDisplay = document.getElementById('o-score');
     let currentPlayer = 'X';
     let gameBoard = ['', '', '', '', '', '', '', '', ''];
     let gameActive = true;
+    let isSinglePlayer = false;
+    let scores = JSON.parse(localStorage.getItem('ticTacToeScores')) || { x: 0, o: 0 };
+
+    // Initialize score display
+    xScoreDisplay.textContent = scores.x;
+    oScoreDisplay.textContent = scores.o;
 
     const winningCombinations = [
       [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
@@ -114,18 +280,31 @@
     function handleCellClick(event) {
       const index = event.target.dataset.index;
       if (gameBoard[index] === '' && gameActive) {
-        gameBoard[index] = currentPlayer;
-        event.target.classList.add(currentPlayer.toLowerCase());
-        if (checkWin()) {
-          status.textContent = `Player ${currentPlayer} Wins!`;
-          gameActive = false;
-        } else if (gameBoard.every(cell => cell !== '')) {
-          status.textContent = "It's a Draw!";
-          gameActive = false;
-        } else {
-          currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-          status.textContent = `Player ${currentPlayer}'s Turn`;
+        makeMove(index, currentPlayer);
+        if (isSinglePlayer && gameActive && currentPlayer === 'O') {
+          setTimeout(aiMove, 500); // AI moves after 0.5s delay
         }
+      }
+    }
+
+    function makeMove(index, player) {
+      gameBoard[index] = player;
+      cells[index].classList.add(player.toLowerCase());
+      if (checkWin()) {
+        status.textContent = `Player ${player} Wins!`;
+        scores[player.toLowerCase()]++;
+        localStorage.setItem('ticTacToeScores', JSON.stringify(scores));
+        xScoreDisplay.textContent = scores.x;
+        oScoreDisplay.textContent = scores.o;
+        gameActive = false;
+        setTimeout(resetGame, 2000); // Auto-reset after 2 seconds
+      } else if (gameBoard.every(cell => cell !== '')) {
+        status.textContent = "It's a Draw!";
+        gameActive = false;
+        setTimeout(resetGame, 2000); // Auto-reset after 2 seconds
+      } else {
+        currentPlayer = player === 'X' ? 'O' : 'X';
+        status.textContent = `Player ${currentPlayer}'s Turn`;
       }
     }
 
@@ -133,6 +312,41 @@
       return winningCombinations.some(combination => {
         return combination.every(index => gameBoard[index] === currentPlayer);
       });
+    }
+
+    function aiMove() {
+      // Check for AI winning move
+      for (let i = 0; i < 9; i++) {
+        if (gameBoard[i] === '') {
+          gameBoard[i] = 'O';
+          if (checkWin()) {
+            gameBoard[i] = '';
+            makeMove(i, 'O');
+            return;
+          }
+          gameBoard[i] = '';
+        }
+      }
+      // Check for blocking player's winning move
+      for (let i = 0; i < 9; i++) {
+        if (gameBoard[i] === '') {
+          gameBoard[i] = 'X';
+          if (checkWin()) {
+            gameBoard[i] = '';
+            makeMove(i, 'O');
+            return;
+          }
+          gameBoard[i] = '';
+        }
+      }
+      // Choose random empty cell
+      const emptyCells = gameBoard
+        .map((cell, index) => (cell === '' ? index : null))
+        .filter(index => index !== null);
+      if (emptyCells.length > 0) {
+        const randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        makeMove(randomIndex, 'O');
+      }
     }
 
     function resetGame() {
@@ -145,8 +359,15 @@
       });
     }
 
+    function toggleMode() {
+      isSinglePlayer = !isSinglePlayer;
+      toggleModeButton.textContent = `Mode: ${isSinglePlayer ? 'Single-Player' : 'Two-Player'}`;
+      resetGame();
+    }
+
     cells.forEach(cell => cell.addEventListener('click', handleCellClick));
     resetButton.addEventListener('click', resetGame);
+    toggleModeButton.addEventListener('click', toggleMode);
   </script>
 </body>
 </html>
